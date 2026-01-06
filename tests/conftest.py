@@ -22,7 +22,7 @@ def sample_email_content() -> EmailContent:
     return EmailContent(
         subject="Re: Invoice #12345",
         body="I cannot pay right now. I lost my job last month. Can we work out a payment plan?",
-        sender="customer@example.com",
+        from_address="customer@example.com",
         received_at="2024-01-15T10:30:00Z",
     )
 
@@ -80,7 +80,7 @@ def sample_communication_info() -> CommunicationInfo:
         touch_count=3,
         last_touch_at="2024-01-10T09:00:00Z",
         last_touch_channel="email",
-        last_sender_level="collector",
+        last_sender_level=1,
         last_tone_used="friendly_reminder",
     )
 
@@ -102,7 +102,7 @@ def sample_case_context(
             TouchHistory(
                 sent_at="2024-01-10T09:00:00Z",
                 tone="friendly_reminder",
-                sender_level="collector",
+                sender_level=1,
                 had_response=False,
             )
         ],
@@ -131,8 +131,8 @@ def sample_generate_draft_request(sample_case_context) -> GenerateDraftRequest:
     """Complete draft generation request."""
     return GenerateDraftRequest(
         context=sample_case_context,
-        classification="HARDSHIP",
-        requested_tone="concerned_inquiry",
+        tone="concerned_inquiry",
+        objective="discuss repayment",
     )
 
 

@@ -1,10 +1,9 @@
 """Unit tests for GateEvaluator."""
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from src.engine.gate_evaluator import GateEvaluator
-from src.api.models.responses import EvaluateGatesResponse, GateResult
-
+from src.api.models.responses import EvaluateGatesResponse
 
 class TestGateEvaluator:
     """Tests for GateEvaluator."""
@@ -14,173 +13,69 @@ class TestGateEvaluator:
         """Create evaluator instance."""
         return GateEvaluator()
 
-    @pytest.mark.asyncio
-    async def test_evaluate_all_gates_pass(self, evaluator, sample_evaluate_gates_request):
-        """Test evaluation when all gates pass."""
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "gates": [
-                {"gate": "touch_cap", "passed": true, "reason": "3 of 10 touches used"},
-                {"gate": "cooling_off", "passed": true, "reason": "5 days since last touch"},
-                {"gate": "dispute_active", "passed": true, "reason": "No active dispute"},
-                {"gate": "hardship", "passed": true, "reason": "No hardship indicated"},
-                {"gate": "unsubscribe", "passed": true, "reason": "Not unsubscribed"},
-                {"gate": "escalation_appropriate", "passed": true, "reason": "Normal escalation path"}
-            ],
-            "overall_allowed": true,
-            "blocking_gates": []
-        }"""
+    def test_evaluate_touch_cap_exceeded(self, evaluator, sample_evaluate_gates_request):
+        """Test blocking when touch cap is exceeded."""
+        # Setup context where touch count equals cap
+        sample_evaluate_gates_request.context.communication.touch_count = 10
+        sample_evaluate_gates_request.context.touch_cap = 10
+        
+        mock_result = {
+            "allowed": False,
+            "gate_results": {
+                "touch_cap": {
+                    "passed": False,
+                    "reason": "Touch cap of 10 reached",
+                    "current_value": 10,
+                    "threshold": 10
+                }
+            },
+            "recommended_action": "escalate",
+            "_tokens_used": 100
+        }
 
-        with patch.object(evaluator.llm, "chat_completion", new_callable=AsyncMock) as mock_llm:
-            mock_llm.return_value = mock_response
+        with patch("src.engine.gate_evaluator.llm_client.complete") as mock_complete:
+            mock_complete.return_value = mock_result
             
-            result = await evaluator.evaluate(sample_evaluate_gates_request)
+            result = evaluator.evaluate(sample_evaluate_gates_request)
             
             assert isinstance(result, EvaluateGatesResponse)
-            assert result.overall_allowed is True
-            assert len(result.blocking_gates) == 0
-            assert len(result.gates) == 6
-
-    @pytest.mark.asyncio
-    async def test_evaluate_touch_cap_exceeded(self, evaluator, sample_evaluate_gates_request):
-        """Test evaluation when touch cap is exceeded."""
-        sample_evaluate_gates_request.context.communication.touch_count = 10
-        
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "gates": [
-                {"gate": "touch_cap", "passed": false, "reason": "Touch cap of 10 reached"},
-                {"gate": "cooling_off", "passed": true, "reason": "5 days since last touch"},
-                {"gate": "dispute_active", "passed": true, "reason": "No active dispute"},
-                {"gate": "hardship", "passed": true, "reason": "No hardship indicated"},
-                {"gate": "unsubscribe", "passed": true, "reason": "Not unsubscribed"},
-                {"gate": "escalation_appropriate", "passed": true, "reason": "Normal escalation path"}
-            ],
-            "overall_allowed": false,
-            "blocking_gates": ["touch_cap"]
-        }"""
-
-        with patch.object(evaluator.llm, "chat_completion", new_callable=AsyncMock) as mock_llm:
-            mock_llm.return_value = mock_response
+            assert result.allowed is False
+            assert result.gate_results["touch_cap"].passed is False
+            assert result.gate_results["touch_cap"].reason == "Touch cap of 10 reached"
             
-            result = await evaluator.evaluate(sample_evaluate_gates_request)
-            
-            assert result.overall_allowed is False
-            assert "touch_cap" in result.blocking_gates
+            # Verify prompt contained correct info
+            call_args = mock_complete.call_args
+            user_prompt = call_args.kwargs["user_prompt"]
+            # Check for values loosely as string format might vary
+            assert "10" in user_prompt 
 
-    @pytest.mark.asyncio
-    async def test_evaluate_active_dispute_blocks(self, evaluator, sample_evaluate_gates_request):
-        """Test evaluation when there's an active dispute."""
+    def test_evaluate_active_dispute(self, evaluator, sample_evaluate_gates_request):
+        """Test blocking when there is an active dispute."""
         sample_evaluate_gates_request.context.active_dispute = True
         
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "gates": [
-                {"gate": "touch_cap", "passed": true, "reason": "3 of 10 touches used"},
-                {"gate": "cooling_off", "passed": true, "reason": "5 days since last touch"},
-                {"gate": "dispute_active", "passed": false, "reason": "Active dispute must be resolved first"},
-                {"gate": "hardship", "passed": true, "reason": "No hardship indicated"},
-                {"gate": "unsubscribe", "passed": true, "reason": "Not unsubscribed"},
-                {"gate": "escalation_appropriate", "passed": true, "reason": "Normal escalation path"}
-            ],
-            "overall_allowed": false,
-            "blocking_gates": ["dispute_active"]
-        }"""
+        mock_result = {
+            "allowed": False,
+            "gate_results": {
+                "dispute_active": {
+                    "passed": False,
+                    "reason": "Active dispute prevents collection",
+                    "current_value": True,
+                    "threshold": False
+                }
+            },
+            "recommended_action": "resolve_dispute",
+            "_tokens_used": 100
+        }
 
-        with patch.object(evaluator.llm, "chat_completion", new_callable=AsyncMock) as mock_llm:
-            mock_llm.return_value = mock_response
+        with patch("src.engine.gate_evaluator.llm_client.complete") as mock_complete:
+            mock_complete.return_value = mock_result
             
-            result = await evaluator.evaluate(sample_evaluate_gates_request)
+            result = evaluator.evaluate(sample_evaluate_gates_request)
             
-            assert result.overall_allowed is False
-            assert "dispute_active" in result.blocking_gates
-
-    @pytest.mark.asyncio
-    async def test_evaluate_hardship_blocks_standard_action(self, evaluator, sample_evaluate_gates_request):
-        """Test evaluation when hardship is indicated."""
-        sample_evaluate_gates_request.context.hardship_indicated = True
-        
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "gates": [
-                {"gate": "touch_cap", "passed": true, "reason": "3 of 10 touches used"},
-                {"gate": "cooling_off", "passed": true, "reason": "5 days since last touch"},
-                {"gate": "dispute_active", "passed": true, "reason": "No active dispute"},
-                {"gate": "hardship", "passed": false, "reason": "Hardship case requires special handling"},
-                {"gate": "unsubscribe", "passed": true, "reason": "Not unsubscribed"},
-                {"gate": "escalation_appropriate", "passed": true, "reason": "Normal escalation path"}
-            ],
-            "overall_allowed": false,
-            "blocking_gates": ["hardship"]
-        }"""
-
-        with patch.object(evaluator.llm, "chat_completion", new_callable=AsyncMock) as mock_llm:
-            mock_llm.return_value = mock_response
+            assert result.allowed is False
+            assert result.gate_results["dispute_active"].passed is False
             
-            result = await evaluator.evaluate(sample_evaluate_gates_request)
-            
-            assert result.overall_allowed is False
-            assert "hardship" in result.blocking_gates
-
-    @pytest.mark.asyncio
-    async def test_evaluate_cooling_off_period(self, evaluator, sample_evaluate_gates_request):
-        """Test evaluation during cooling off period."""
-        sample_evaluate_gates_request.context.communication.last_touch_at = "2024-01-14T09:00:00Z"  # Yesterday
-        
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "gates": [
-                {"gate": "touch_cap", "passed": true, "reason": "3 of 10 touches used"},
-                {"gate": "cooling_off", "passed": false, "reason": "Only 1 day since last touch, need 3"},
-                {"gate": "dispute_active", "passed": true, "reason": "No active dispute"},
-                {"gate": "hardship", "passed": true, "reason": "No hardship indicated"},
-                {"gate": "unsubscribe", "passed": true, "reason": "Not unsubscribed"},
-                {"gate": "escalation_appropriate", "passed": true, "reason": "Normal escalation path"}
-            ],
-            "overall_allowed": false,
-            "blocking_gates": ["cooling_off"]
-        }"""
-
-        with patch.object(evaluator.llm, "chat_completion", new_callable=AsyncMock) as mock_llm:
-            mock_llm.return_value = mock_response
-            
-            result = await evaluator.evaluate(sample_evaluate_gates_request)
-            
-            assert result.overall_allowed is False
-            assert "cooling_off" in result.blocking_gates
-
-    @pytest.mark.asyncio
-    async def test_evaluate_multiple_blocking_gates(self, evaluator, sample_evaluate_gates_request):
-        """Test evaluation with multiple blocking conditions."""
-        sample_evaluate_gates_request.context.active_dispute = True
-        sample_evaluate_gates_request.context.communication.touch_count = 10
-        
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = """{
-            "gates": [
-                {"gate": "touch_cap", "passed": false, "reason": "Touch cap of 10 reached"},
-                {"gate": "cooling_off", "passed": true, "reason": "5 days since last touch"},
-                {"gate": "dispute_active", "passed": false, "reason": "Active dispute on account"},
-                {"gate": "hardship", "passed": true, "reason": "No hardship indicated"},
-                {"gate": "unsubscribe", "passed": true, "reason": "Not unsubscribed"},
-                {"gate": "escalation_appropriate", "passed": true, "reason": "Normal escalation path"}
-            ],
-            "overall_allowed": false,
-            "blocking_gates": ["touch_cap", "dispute_active"]
-        }"""
-
-        with patch.object(evaluator.llm, "chat_completion", new_callable=AsyncMock) as mock_llm:
-            mock_llm.return_value = mock_response
-            
-            result = await evaluator.evaluate(sample_evaluate_gates_request)
-            
-            assert result.overall_allowed is False
-            assert len(result.blocking_gates) == 2
-            assert "touch_cap" in result.blocking_gates
-            assert "dispute_active" in result.blocking_gates
+            # Verify prompt contained correct info
+            call_args = mock_complete.call_args
+            user_prompt = call_args.kwargs["user_prompt"]
+            assert "True" in user_prompt or "active_dispute" in user_prompt

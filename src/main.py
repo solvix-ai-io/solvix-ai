@@ -9,6 +9,7 @@ Main entry point for the AI Engine service providing:
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
 from src.config.settings import settings
 from src.api.routes import classify, generate, gates, health
@@ -21,11 +22,22 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("="*60)
+    logger.info("Starting Solvix AI Engine")
+    logger.info("="*60)
+    logger.info(f"Model: {settings.openai_model}")
+    logger.info(f"Port: {settings.api_port}")
+    logger.info(f"Debug: {settings.debug}")
+    yield
+
 # Create app
 app = FastAPI(
     title="Solvix AI Engine",
     description="AI-powered email classification and draft generation for debt collection",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan
 )
 
 # CORS middleware
@@ -44,14 +56,6 @@ app.include_router(generate.router, tags=["Generation"])
 app.include_router(gates.router, tags=["Gates"])
 
 
-@app.on_event("startup")
-async def startup_event():
-    logger.info("="*60)
-    logger.info("Starting Solvix AI Engine")
-    logger.info("="*60)
-    logger.info(f"Model: {settings.openai_model}")
-    logger.info(f"Port: {settings.api_port}")
-    logger.info(f"Debug: {settings.debug}")
 
 
 if __name__ == "__main__":

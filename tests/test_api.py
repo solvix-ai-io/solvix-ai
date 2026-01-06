@@ -5,12 +5,10 @@ from fastapi.testclient import TestClient
 
 from src.main import app
 
-
 @pytest.fixture
 def client():
     """Create test client."""
     return TestClient(app)
-
 
 class TestHealthEndpoint:
     """Tests for health check endpoint."""
@@ -23,7 +21,6 @@ class TestHealthEndpoint:
         data = response.json()
         assert data["status"] == "healthy"
         assert "version" in data
-
 
 class TestClassifyEndpoint:
     """Tests for /classify endpoint."""
@@ -40,94 +37,83 @@ class TestClassifyEndpoint:
             "email": {
                 "subject": "Test",
                 "body": "Test body",
-                "sender": "test@example.com"
+                "from_address": "test@example.com"
             }
         })
         
         assert response.status_code == 422
 
-    @patch("src.api.routes.classify.EmailClassifier")
-    def test_classify_success(self, mock_classifier_class, client, sample_classify_request):
+    @patch("src.api.routes.classify.classifier")
+    def test_classify_success(self, mock_classifier, client, sample_classify_request):
         """Test successful classification."""
-        mock_classifier = MagicMock()
-        mock_classifier.classify = AsyncMock(return_value=MagicMock(
+        from src.api.models.responses import ClassifyResponse
+        mock_response = ClassifyResponse(
             classification="HARDSHIP",
             confidence=0.92,
-            reasoning="Job loss mentioned",
-            extracted_data=None
-        ))
-        mock_classifier_class.return_value = mock_classifier
+            reasoning="Job loss mentioned"
+        )
+        mock_classifier.classify.return_value = mock_response
         
-        response = client.post("/classify", json=sample_classify_request.model_dump())
+        response = client.post("/classify", json=sample_classify_request.model_dump(mode='json'))
         
         assert response.status_code == 200
         data = response.json()
-        assert "classification" in data
-
+        assert data["classification"] == "HARDSHIP"
 
 class TestGenerateEndpoint:
-    """Tests for /generate endpoint."""
+    """Tests for /generate-draft endpoint."""
 
     def test_generate_requires_context(self, client):
         """Test generate endpoint requires context field."""
-        response = client.post("/generate", json={
-            "classification": "HARDSHIP"
+        response = client.post("/generate-draft", json={
+            "tone": "firm"
         })
         
         assert response.status_code == 422
 
-    def test_generate_requires_classification(self, client, sample_case_context):
-        """Test generate endpoint requires classification field."""
-        response = client.post("/generate", json={
-            "context": sample_case_context.model_dump()
-        })
-        
-        assert response.status_code == 422
-
-    @patch("src.api.routes.generate.DraftGenerator")
-    def test_generate_success(self, mock_generator_class, client, sample_generate_draft_request):
+    @patch("src.api.routes.generate.generator")
+    def test_generate_success(self, mock_generator, client, sample_generate_draft_request):
         """Test successful draft generation."""
-        mock_generator = MagicMock()
-        mock_generator.generate = AsyncMock(return_value=MagicMock(
+        from src.api.models.responses import GenerateDraftResponse
+        mock_response = GenerateDraftResponse(
             subject="Re: Your Account",
             body="Dear Customer,\n\nThank you for reaching out.",
             tone_used="concerned_inquiry",
-            key_points=["Acknowledged hardship"]
-        ))
-        mock_generator_class.return_value = mock_generator
+            invoices_referenced=["INV-123"]
+        )
+        mock_generator.generate.return_value = mock_response
         
-        response = client.post("/generate", json=sample_generate_draft_request.model_dump())
+        response = client.post("/generate-draft", json=sample_generate_draft_request.model_dump(mode='json'))
         
         assert response.status_code == 200
         data = response.json()
-        assert "subject" in data
-        assert "body" in data
-
+        assert data["subject"] == "Re: Your Account"
+        assert data["body"] == "Dear Customer,\n\nThank you for reaching out."
 
 class TestGatesEndpoint:
-    """Tests for /gates endpoint."""
+    """Tests for /evaluate-gates endpoint."""
 
     def test_gates_requires_context(self, client):
         """Test gates endpoint requires context field."""
-        response = client.post("/gates", json={
+        response = client.post("/evaluate-gates", json={
             "proposed_action": "send_email"
         })
         
         assert response.status_code == 422
 
-    @patch("src.api.routes.gates.GateEvaluator")
-    def test_gates_success(self, mock_evaluator_class, client, sample_evaluate_gates_request):
+    @patch("src.api.routes.gates.gate_evaluator")
+    def test_gates_success(self, mock_evaluator, client, sample_evaluate_gates_request):
         """Test successful gate evaluation."""
-        mock_evaluator = MagicMock()
-        mock_evaluator.evaluate = AsyncMock(return_value=MagicMock(
-            gates=[],
-            overall_allowed=True,
-            blocking_gates=[]
-        ))
-        mock_evaluator_class.return_value = mock_evaluator
+        from src.api.models.responses import EvaluateGatesResponse
+        mock_response = EvaluateGatesResponse(
+            allowed=True,
+            gate_results={},
+            recommended_action=None
+        )
+        mock_evaluator.evaluate.return_value = mock_response
         
-        response = client.post("/gates", json=sample_evaluate_gates_request.model_dump())
+        response = client.post("/evaluate-gates", json=sample_evaluate_gates_request.model_dump(mode='json'))
         
         assert response.status_code == 200
         data = response.json()
-        assert "overall_allowed" in data
+        assert data["allowed"] is True
