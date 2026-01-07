@@ -79,3 +79,35 @@ class TestGateEvaluator:
             call_args = mock_complete.call_args
             user_prompt = call_args.kwargs["user_prompt"]
             assert "True" in user_prompt or "active_dispute" in user_prompt
+
+    def test_evaluate_allowed(self, evaluator, sample_evaluate_gates_request):
+        """Test allowing when all gates pass."""
+        mock_result = {
+            "allowed": True,
+            "gate_results": {
+                "touch_cap": {
+                    "passed": True,
+                    "reason": "Touch count within limits",
+                    "current_value": 3,
+                    "threshold": 10
+                },
+                "dispute_active": {
+                    "passed": True,
+                    "reason": "No active dispute",
+                    "current_value": False,
+                    "threshold": False
+                }
+            },
+            "recommended_action": "proceed",
+            "_tokens_used": 100
+        }
+
+        with patch("src.engine.gate_evaluator.llm_client.complete") as mock_complete:
+            mock_complete.return_value = mock_result
+            
+            result = evaluator.evaluate(sample_evaluate_gates_request)
+            
+            assert isinstance(result, EvaluateGatesResponse)
+            assert result.allowed is True
+            assert result.gate_results["touch_cap"].passed is True
+            assert result.gate_results["dispute_active"].passed is True

@@ -13,7 +13,8 @@ Stateless AI service for the Solvix debt collection platform. Provides email cla
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────┐
 │  Solvix Backend │────▶│  Solvix AI Engine │────▶│   OpenAI    │
-│   (Django)      │◀────│   (FastAPI)       │◀────│   GPT-4o    │
+│   (Django)      │◀────│   (FastAPI)       │◀────│  Model via  │
+│                 │     │                  │     │  OPENAI_MODEL│
 └─────────────────┘     └──────────────────┘     └─────────────┘
 ```
 
@@ -25,8 +26,8 @@ The AI Engine is stateless - it receives all context via HTTP requests and does 
 |----------|--------|-------------|
 | `/health` | GET | Health check |
 | `/classify` | POST | Classify inbound email |
-| `/generate` | POST | Generate response draft |
-| `/gates` | POST | Evaluate compliance gates |
+| `/generate-draft` | POST | Generate response draft |
+| `/evaluate-gates` | POST | Evaluate compliance gates |
 
 ## Quick Start
 
@@ -112,15 +113,31 @@ Environment variables:
 
 ## Testing
 
+### Unit tests (no OpenAI calls)
+
+The default unit tests **mock** the LLM layer (e.g. patching `llm_client.complete`) so they are fast, deterministic, and do **not** call OpenAI.
+
 ```bash
-# Run all tests
-pytest
+# If your venv is activated and pytest is on PATH
+pytest tests/
 
-# Run with coverage
-pytest --cov=src
+# Or run via the repo venv directly
+./venv/bin/pytest tests/
+```
 
-# Run specific test file
-pytest tests/test_classifier.py
+### Live integration tests (real OpenAI calls)
+
+`tests/test_live_integration.py` makes **real network calls** to OpenAI via `src/llm/client.py`. These tests:
+- require `OPENAI_API_KEY`
+- may incur cost and take longer
+- validate that we are not just returning dummy responses
+
+```bash
+# Run only the live tests
+./venv/bin/pytest tests/test_live_integration.py
+
+# To see evidence of real HTTP requests (debug logs)
+./venv/bin/pytest tests/test_live_integration.py -s --log-cli-level=DEBUG
 ```
 
 ## Project Structure

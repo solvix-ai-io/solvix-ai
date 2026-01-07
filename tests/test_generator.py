@@ -52,3 +52,19 @@ class TestDraftGenerator:
                 
                 assert result.tone_used == tone
                 assert result.body == f"Body with {tone} tone."
+
+    def test_generate_draft_no_invoices(self, generator, sample_generate_draft_request):
+        """Test draft generation when no invoices are referenced."""
+        mock_result = {
+            "subject": "Payment Reminder",
+            "body": "Dear Customer, Please contact us to discuss your account.",
+            "_tokens_used": 100
+        }
+
+        with patch("src.engine.generator.llm_client.complete") as mock_complete:
+            mock_complete.return_value = mock_result
+            
+            result = generator.generate(sample_generate_draft_request)
+            
+            assert isinstance(result, GenerateDraftResponse)
+            assert len(result.invoices_referenced) == 0
