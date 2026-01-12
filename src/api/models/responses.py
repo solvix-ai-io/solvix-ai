@@ -49,6 +49,8 @@ class EvaluateGatesResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     """Health check response."""
-    status: str
+    status: str  # "healthy", "degraded", "unhealthy"
     version: str
     model: str
+    model_available: bool = True
+    uptime_seconds: Optional[float] = None

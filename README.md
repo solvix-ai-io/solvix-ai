@@ -214,13 +214,58 @@ from services.ai_engine import AIEngineClient
 async with AIEngineClient() as client:
     # Classify email
     result = await client.classify_email(email_content, context)
-    
+
     # Generate draft
     draft = await client.generate_draft(context, classification, tone)
-    
+
     # Check gates
     gates = await client.evaluate_gates(context, action)
 ```
+
+### Docker Connectivity
+
+The Solvix backend runs inside Docker and needs to connect to the AI Engine. Since the AI Engine runs on the host machine (not in Docker), use:
+
+**macOS / Windows (Docker Desktop):**
+
+```bash
+# In Solvix/.env
+AI_ENGINE_URL=http://host.docker.internal:8001
+```
+
+**Linux:**
+
+```bash
+# In Solvix/.env
+AI_ENGINE_URL=http://172.17.0.1:8001
+# Or use the host's actual IP address
+```
+
+The special hostname `host.docker.internal` resolves to the host machine from within Docker containers.
+
+### Running with Solvix Backend
+
+1. **Start the AI Engine** (runs on host):
+
+   ```bash
+   cd solvix-ai
+   source venv/bin/activate
+   uvicorn src.main:app --reload --port 8001
+   ```
+
+2. **Start Solvix Backend** (runs in Docker):
+
+   ```bash
+   cd Solvix
+   make dev-backend
+   ```
+
+3. **Verify connectivity**:
+
+   ```bash
+   # From inside the Docker container
+   docker exec solvix_web curl http://host.docker.internal:8001/health
+   ```
 
 ## License
 
