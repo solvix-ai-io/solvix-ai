@@ -1,11 +1,20 @@
+# Web Framework
 fastapi>=0.109.0
 uvicorn>=0.27.0
 pydantic>=2.5.0
 pydantic-settings>=2.1.0
-openai>=1.12.0
+
+# LLM Abstraction (LangChain - replaces direct SDK imports)
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-google-genai>=2.0.0        # Gemini provider (primary)
+langchain-openai>=0.2.0              # OpenAI provider (fallback)
+
+# Utilities
 tenacity>=8.2.0
 python-dotenv>=1.0.0
 httpx>=0.26.0
+nest-asyncio>=1.5.0  # For async/sync compatibility in client wrapper
 
 # Development
 pytest>=8.0.0

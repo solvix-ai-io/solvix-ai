@@ -1,28 +1,27 @@
+"""
+Backwards compatibility wrapper for existing code.
+
+This module provides an adapter that wraps the new LangChain-based
+provider system with the old synchronous dict-based interface.
+"""
 import json
 import logging
+import asyncio
 from typing import Optional, Dict, Any
 
-from openai import OpenAI
-from tenacity import retry, stop_after_attempt, wait_exponential
-
-from src.config.settings import settings
+from .factory import llm_client as llm_provider
 
 logger = logging.getLogger(__name__)
 
 
 class LLMClient:
-    """Wrapper for OpenAI API calls."""
-    
-    def __init__(self):
-        self.client = OpenAI(api_key=settings.openai_api_key)
-        self.model = settings.openai_model
-        self.temperature = settings.openai_temperature
-        self.max_tokens = settings.openai_max_tokens
-    
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10)
-    )
+    """
+    Backwards-compatible wrapper for the new provider system.
+
+    Maintains the same interface as the old OpenAI-only client
+    while using the new multi-provider system underneath.
+    """
+
     def complete(
         self,
         system_prompt: str,
@@ -32,54 +31,38 @@ class LLMClient:
         json_response: bool = True
     ) -> Dict[str, Any]:
         """
-        Make a completion request to OpenAI.
-        
+        Make a completion request using the configured LLM provider.
+
         Args:
             system_prompt: System message setting context
             user_prompt: User message with the actual request
             temperature: Override default temperature
             max_tokens: Override default max tokens
             json_response: If True, request JSON output
-        
+
         Returns:
-            Parsed response dict and token usage
+            Parsed response dict with _tokens_used field
         """
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
-        
-        kwargs = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": temperature or self.temperature,
-            "max_completion_tokens": max_tokens or self.max_tokens,
-        }
-        
-        if json_response:
-            kwargs["response_format"] = {"type": "json_object"}
-        
-        # Handle models that don't support temperature or max_tokens or json_object
-        if self.model.startswith(("o1", "gpt-5")):
-            # These models enforce temperature=1 and require max_completion_tokens
-            if "temperature" in kwargs:
-                del kwargs["temperature"]
-            # Some reasoning models don't support response_format="json_object" yet
-            if "response_format" in kwargs:
-                del kwargs["response_format"]
-        
-        logger.debug(f"Calling OpenAI: model={self.model}")
-        
-        response = self.client.chat.completions.create(**kwargs)
-        
-        content = response.choices[0].message.content or ""
-        finish_reason = response.choices[0].finish_reason
-        tokens_used = response.usage.total_tokens if response.usage else None
-        
-        logger.debug(f"OpenAI response: tokens={tokens_used}, finish_reason={finish_reason}")
-        
-        if not content and finish_reason == "content_filter":
-             raise ValueError("OpenAI request was blocked by content filter")
+        # Call the async provider (LangChain-based)
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # If we're already in an async context, use the current loop
+            import nest_asyncio
+            nest_asyncio.apply()
+
+        response = loop.run_until_complete(
+            llm_provider.complete(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                json_mode=json_response
+            )
+        )
+
+        # Convert LLMResponse to the old dict format
+        content = response.content
+        tokens_used = response.usage.get("total_tokens", 0)
 
         if json_response:
             try:
@@ -91,9 +74,9 @@ class LLMClient:
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON response: {content}")
                 raise e
-        
+
         return {"content": content, "_tokens_used": tokens_used}
 
 
-# Singleton instance
+# Singleton instance (backwards compatibility)
 llm_client = LLMClient()

@@ -11,7 +11,7 @@ from typing import Dict, Any
 from src.api.models.requests import ClassifyRequest
 from src.api.models.responses import ClassifyResponse, ExtractedData
 from src.llm.client import llm_client
-from src.llm.prompts import CLASSIFY_EMAIL_SYSTEM, CLASSIFY_EMAIL_USER
+from src.prompts import CLASSIFY_EMAIL_SYSTEM, CLASSIFY_EMAIL_USER
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from src.api.models.requests import EvaluateGatesRequest
 from src.api.models.responses import EvaluateGatesResponse, GateResult
 from src.llm.client import llm_client
-from src.llm.prompts import EVALUATE_GATES_SYSTEM, EVALUATE_GATES_USER
+from src.prompts import EVALUATE_GATES_SYSTEM, EVALUATE_GATES_USER
 
 logger = logging.getLogger(__name__)
 

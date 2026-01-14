@@ -10,7 +10,7 @@ from typing import Dict, Any
 from src.api.models.requests import GenerateDraftRequest
 from src.api.models.responses import GenerateDraftResponse
 from src.llm.client import llm_client
-from src.llm.prompts import GENERATE_DRAFT_SYSTEM, GENERATE_DRAFT_USER
+from src.prompts import GENERATE_DRAFT_SYSTEM, GENERATE_DRAFT_USER
 
 logger = logging.getLogger(__name__)
 

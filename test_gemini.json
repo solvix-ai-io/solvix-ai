@@ -1,0 +1,23 @@
+{
+  "context": {
+    "organization_id": 1,
+    "tenant_id": 1,
+    "party": {
+      "party_name": "Test Corp",
+      "customer_code": "TEST001",
+      "total_outstanding": 5000.00,
+      "currency": "GBP",
+      "days_overdue_max": 45,
+      "broken_promises_count": 0,
+      "segment": "MEDIUM_RISK",
+      "active_dispute": false,
+      "hardship_indicated": false
+    }
+  },
+  "email": {
+    "from_name": "John Doe",
+    "from_address": "john@testcorp.com",
+    "subject": "Re: Invoice Payment",
+    "body": "Hi, we will pay the outstanding amount by the end of this month."
+  }
+}

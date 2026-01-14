@@ -51,6 +51,11 @@ class HealthResponse(BaseModel):
     """Health check response."""
     status: str  # "healthy", "degraded", "unhealthy"
     version: str
+    provider: str  # "gemini", "openai", etc.
     model: str
+    fallback_provider: Optional[str] = None
+    fallback_model: Optional[str] = None
+    fallback_count: int = 0
     model_available: bool = True
+    fallback_available: bool = False
     uptime_seconds: Optional[float] = None
