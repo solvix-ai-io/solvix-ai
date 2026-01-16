@@ -1,4 +1,5 @@
 """Unit tests for EmailClassifier."""
+
 import json
 from unittest.mock import AsyncMock, patch
 
@@ -31,21 +32,25 @@ class TestEmailClassifier:
     @pytest.mark.asyncio
     async def test_classify_hardship_email(self, classifier, sample_classify_request):
         """Test classification of hardship email."""
-        mock_response = _make_llm_response({
-            "classification": "HARDSHIP",
-            "confidence": 0.92,
-            "reasoning": "Customer mentions job loss and requests payment plan",
-            "extracted_data": {
-                "promise_date": None,
-                "promise_amount": None,
-                "dispute_type": None,
-                "dispute_reason": None,
-                "redirect_contact": None,
-                "redirect_email": None,
-            },
-        })
+        mock_response = _make_llm_response(
+            {
+                "classification": "HARDSHIP",
+                "confidence": 0.92,
+                "reasoning": "Customer mentions job loss and requests payment plan",
+                "extracted_data": {
+                    "promise_date": None,
+                    "promise_amount": None,
+                    "dispute_type": None,
+                    "dispute_reason": None,
+                    "redirect_contact": None,
+                    "redirect_email": None,
+                },
+            }
+        )
 
-        with patch("src.engine.classifier.llm_client.complete", new_callable=AsyncMock) as mock_complete:
+        with patch(
+            "src.engine.classifier.llm_client.complete", new_callable=AsyncMock
+        ) as mock_complete:
             mock_complete.return_value = mock_response
 
             result = await classifier.classify(sample_classify_request)
@@ -64,14 +69,18 @@ class TestEmailClassifier:
             "I will pay the full amount of £1500 by Friday January 20th."
         )
 
-        mock_response = _make_llm_response({
-            "classification": "PROMISE_TO_PAY",
-            "confidence": 0.95,
-            "reasoning": "Customer commits to specific payment amount and date",
-            "extracted_data": {"promise_amount": 1500, "promise_date": "2024-01-20"},
-        })
+        mock_response = _make_llm_response(
+            {
+                "classification": "PROMISE_TO_PAY",
+                "confidence": 0.95,
+                "reasoning": "Customer commits to specific payment amount and date",
+                "extracted_data": {"promise_amount": 1500, "promise_date": "2024-01-20"},
+            }
+        )
 
-        with patch("src.engine.classifier.llm_client.complete", new_callable=AsyncMock) as mock_complete:
+        with patch(
+            "src.engine.classifier.llm_client.complete", new_callable=AsyncMock
+        ) as mock_complete:
             mock_complete.return_value = mock_response
 
             result = await classifier.classify(sample_classify_request)
@@ -88,14 +97,18 @@ class TestEmailClassifier:
             "I never received the goods for invoice #12345. This charge is incorrect."
         )
 
-        mock_response = _make_llm_response({
-            "classification": "DISPUTE",
-            "confidence": 0.88,
-            "reasoning": "Customer claims goods not received and disputes charge",
-            "extracted_data": {"dispute_reason": "goods_not_received"},
-        })
+        mock_response = _make_llm_response(
+            {
+                "classification": "DISPUTE",
+                "confidence": 0.88,
+                "reasoning": "Customer claims goods not received and disputes charge",
+                "extracted_data": {"dispute_reason": "goods_not_received"},
+            }
+        )
 
-        with patch("src.engine.classifier.llm_client.complete", new_callable=AsyncMock) as mock_complete:
+        with patch(
+            "src.engine.classifier.llm_client.complete", new_callable=AsyncMock
+        ) as mock_complete:
             mock_complete.return_value = mock_response
 
             result = await classifier.classify(sample_classify_request)
@@ -110,14 +123,18 @@ class TestEmailClassifier:
             "Please remove me from your mailing list. I do not wish to receive further emails."
         )
 
-        mock_response = _make_llm_response({
-            "classification": "UNSUBSCRIBE",
-            "confidence": 0.97,
-            "reasoning": "Customer explicitly requests removal from mailing list",
-            "extracted_data": None,
-        })
+        mock_response = _make_llm_response(
+            {
+                "classification": "UNSUBSCRIBE",
+                "confidence": 0.97,
+                "reasoning": "Customer explicitly requests removal from mailing list",
+                "extracted_data": None,
+            }
+        )
 
-        with patch("src.engine.classifier.llm_client.complete", new_callable=AsyncMock) as mock_complete:
+        with patch(
+            "src.engine.classifier.llm_client.complete", new_callable=AsyncMock
+        ) as mock_complete:
             mock_complete.return_value = mock_response
 
             result = await classifier.classify(sample_classify_request)
@@ -136,7 +153,9 @@ class TestEmailClassifier:
             usage={"total_tokens": 100},
         )
 
-        with patch("src.engine.classifier.llm_client.complete", new_callable=AsyncMock) as mock_complete:
+        with patch(
+            "src.engine.classifier.llm_client.complete", new_callable=AsyncMock
+        ) as mock_complete:
             mock_complete.return_value = mock_response
 
             with pytest.raises(LLMResponseInvalidError) as exc_info:
@@ -152,14 +171,18 @@ class TestEmailClassifier:
         sample_classify_request.email.body = "I am currently out of the office with no access to email. I will return on January 25th."
         sample_classify_request.email.subject = "Out of Office: Re: Invoice #12345"
 
-        mock_response = _make_llm_response({
-            "classification": "OUT_OF_OFFICE",
-            "confidence": 0.99,
-            "reasoning": "Automatic out of office reply detected",
-            "extracted_data": None,
-        })
+        mock_response = _make_llm_response(
+            {
+                "classification": "OUT_OF_OFFICE",
+                "confidence": 0.99,
+                "reasoning": "Automatic out of office reply detected",
+                "extracted_data": None,
+            }
+        )
 
-        with patch("src.engine.classifier.llm_client.complete", new_callable=AsyncMock) as mock_complete:
+        with patch(
+            "src.engine.classifier.llm_client.complete", new_callable=AsyncMock
+        ) as mock_complete:
             mock_complete.return_value = mock_response
 
             result = await classifier.classify(sample_classify_request)

@@ -3,6 +3,7 @@ Draft generation API endpoint.
 
 POST /generate-draft - Generate a collection email draft.
 """
+
 import logging
 
 from fastapi import APIRouter

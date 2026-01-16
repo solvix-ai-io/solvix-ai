@@ -3,6 +3,7 @@ Gate evaluation API endpoint.
 
 POST /evaluate-gates - Evaluate gates before allowing a collection action.
 """
+
 import logging
 
 from fastapi import APIRouter

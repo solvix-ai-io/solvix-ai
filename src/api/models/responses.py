@@ -18,7 +18,9 @@ class ExtractedData(BaseModel):
 class ClassifyResponse(BaseModel):
     """Response from email classification."""
 
-    classification: str  # COOPERATIVE, PROMISE, DISPUTE, HOSTILE, QUERY, OUT_OF_OFFICE, UNSUBSCRIBE, OTHER
+    classification: (
+        str  # COOPERATIVE, PROMISE, DISPUTE, HOSTILE, QUERY, OUT_OF_OFFICE, UNSUBSCRIBE, OTHER
+    )
     confidence: float = Field(ge=0.0, le=1.0)
     reasoning: Optional[str] = None
     extracted_data: Optional[ExtractedData] = None

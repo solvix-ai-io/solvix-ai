@@ -1,4 +1,5 @@
 """Shared test fixtures for Solvix AI Engine tests."""
+
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

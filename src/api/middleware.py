@@ -3,6 +3,7 @@ Custom middleware for the Solvix AI Engine.
 
 Provides request tracing and error handling capabilities.
 """
+
 import logging
 import time
 from contextvars import ContextVar

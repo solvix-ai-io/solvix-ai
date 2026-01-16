@@ -3,6 +3,7 @@ Health check API endpoint.
 
 GET /health - Check service health and configuration.
 """
+
 import time
 
 from fastapi import APIRouter

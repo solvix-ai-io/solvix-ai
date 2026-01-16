@@ -4,6 +4,7 @@ Gate evaluation engine.
 Evaluates 6 gates before allowing collection actions based on ai_logic.md:
 touch_cap, cooling_off, dispute_active, hardship, unsubscribe, escalation_appropriate
 """
+
 import json
 import logging
 from datetime import datetime, timezone

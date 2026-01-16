@@ -2,11 +2,10 @@ fail_fast: false
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.15
+    rev: v0.9.1
     hooks:
       - id: ruff
         types: [python]
-        verbose: true
-        entry: bash -c 'ruff check "$@" || true' --
+        args: [--fix]  # Auto-fix safe issues
       - id: ruff-format
         types: [python]

@@ -4,6 +4,7 @@ Structured error handling for the Solvix AI Engine.
 Provides custom exceptions and standardized error response models
 for consistent API error responses.
 """
+
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
@@ -58,7 +59,10 @@ class ErrorResponse(BaseModel):
             "example": {
                 "error": "LLM returned invalid classification",
                 "error_code": "LLM_RESPONSE_INVALID",
-                "details": {"classification": "UNKNOWN", "valid_values": ["PROMISE_TO_PAY", "DISPUTE"]},
+                "details": {
+                    "classification": "UNKNOWN",
+                    "valid_values": ["PROMISE_TO_PAY", "DISPUTE"],
+                },
                 "request_id": "550e8400-e29b-41d4-a716-446655440000",
                 "timestamp": "2024-01-15T10:30:00Z",
             }

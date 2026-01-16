@@ -1,4 +1,5 @@
 """API integration tests for Solvix AI Engine."""
+
 from unittest.mock import AsyncMock, patch
 
 import pytest

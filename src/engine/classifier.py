@@ -5,6 +5,7 @@ Classifies inbound debtor emails into 13 categories based on ai_logic.md:
 INSOLVENCY, DISPUTE, ALREADY_PAID, UNSUBSCRIBE, HOSTILE, PROMISE_TO_PAY,
 HARDSHIP, PLAN_REQUEST, REDIRECT, REQUEST_INFO, OUT_OF_OFFICE, COOPERATIVE, UNCLEAR
 """
+
 import json
 import logging
 from datetime import date
@@ -97,7 +98,9 @@ class EmailClassifier:
                     try:
                         promise_date_parsed = date.fromisoformat(extracted_raw.promise_date)
                     except ValueError:
-                        logger.warning(f"Could not parse promise_date: {extracted_raw.promise_date}")
+                        logger.warning(
+                            f"Could not parse promise_date: {extracted_raw.promise_date}"
+                        )
 
                 extracted = ExtractedData(
                     promise_date=promise_date_parsed,

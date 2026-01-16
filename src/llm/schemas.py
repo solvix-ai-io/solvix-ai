@@ -4,6 +4,7 @@ Pydantic models for validating LLM responses.
 These models ensure type safety when parsing LLM outputs and provide
 clear error messages when the LLM returns malformed data.
 """
+
 from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field, field_validator

@@ -4,6 +4,7 @@ Draft generation engine.
 Generates collection email drafts with 5 tones based on ai_logic.md:
 friendly_reminder, professional, firm, final_notice, concerned_inquiry
 """
+
 import json
 import logging
 
@@ -129,9 +130,7 @@ class DraftGenerator:
 
         # Extract referenced invoices from generated body
         invoices_referenced = [
-            o.invoice_number
-            for o in request.context.obligations
-            if o.invoice_number in result.body
+            o.invoice_number for o in request.context.obligations if o.invoice_number in result.body
         ]
 
         logger.info(

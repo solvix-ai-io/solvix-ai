@@ -6,6 +6,7 @@ Main entry point for the AI Engine service providing:
 - Draft generation
 - Gate evaluation
 """
+
 import logging
 from contextlib import asynccontextmanager
 

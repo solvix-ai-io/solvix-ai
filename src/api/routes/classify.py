@@ -3,6 +3,7 @@ Email classification API endpoint.
 
 POST /classify - Classify an inbound email from a debtor.
 """
+
 import logging
 
 from fastapi import APIRouter
