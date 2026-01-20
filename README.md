@@ -6,6 +6,8 @@ Stateless AI service for the Solvix debt collection platform. Provides email cla
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-green.svg)](https://fastapi.tiangolo.com/)
 [![uv](https://img.shields.io/badge/uv-package%20manager-blueviolet.svg)](https://github.com/astral-sh/uv)
 
+> **📚 Documentation Hub:** For comprehensive platform documentation, see the [Solvix docs](../Solvix/docs/) directory, including [Codebase Analysis](../Solvix/docs/CODEBASE_ANALYSIS.md), [Cross-Repo Integration](../Solvix/docs/architecture/CROSS_REPO_INTEGRATION.md), and [Development Guide](../Solvix/docs/DEVELOPMENT_GUIDE.md).
+
 ---
 
 ## Features
