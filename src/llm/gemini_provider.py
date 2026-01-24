@@ -105,8 +105,17 @@ class GeminiProvider(BaseLLMProvider):
 
             logger.debug(f"Gemini response: tokens={usage['total_tokens']}")
 
+            # Extract content - handle both string and list formats
+            content = response.content
+            if isinstance(content, list):
+                # Extract text from list of content blocks
+                content = "".join(
+                    block.get("text", "") if isinstance(block, dict) else str(block)
+                    for block in content
+                )
+
             return LLMResponse(
-                content=response.content,
+                content=content,
                 model=self._model,
                 provider="gemini",
                 usage=usage,
