@@ -12,19 +12,11 @@ services:
     container_name: solvix_ai_engine
     ports:
       - "8001:8001"
+    env_file:
+      - .env
+    # Override or add environment variables (optional)
+    # These take precedence over .env file
     environment:
-      # LLM Provider Configuration (Gemini is primary, OpenAI is fallback)
-      - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
-      # OpenAI fallback
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o}
-      # LLM Settings
-      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-0.3}
-      - LLM_MAX_RETRIES=${LLM_MAX_RETRIES:-3}
-      - LLM_TIMEOUT_SECONDS=${LLM_TIMEOUT_SECONDS:-30}
-      # Application Settings
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - DEBUG=${DEBUG:-false}
     deploy:
