@@ -1,7 +1,7 @@
 """Base LLM provider abstraction."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Type
 
 from pydantic import BaseModel
 
@@ -27,8 +27,21 @@ class BaseLLMProvider(ABC):
         temperature: float = 0.7,
         max_tokens: int = 2048,
         json_mode: bool = False,
+        response_schema: Optional[Type[BaseModel]] = None,
     ) -> LLMResponse:
-        """Generate completion from prompts."""
+        """
+        Generate completion from prompts.
+
+        Args:
+            system_prompt: System message for the model
+            user_prompt: User message/query
+            temperature: Sampling temperature (0-1)
+            max_tokens: Maximum tokens in response
+            json_mode: If True, request JSON output format
+            response_schema: Optional Pydantic model to enforce structured output.
+                When provided, the model is constrained to output valid JSON
+                matching this schema. More reliable than json_mode alone.
+        """
         pass
 
     @abstractmethod

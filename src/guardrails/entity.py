@@ -1,14 +1,16 @@
 """Entity Verification Guardrail - LLM-based validation of customer/party identifiers."""
 
 import asyncio
+import json
 import logging
 import re
 import time
-from typing import Any
+from typing import Any, List
+
+from pydantic import BaseModel, Field
 
 from src.api.models.requests import CaseContext
 from src.llm.factory import llm_client
-from src.utils.json_extractor import JSONExtractionError, extract_json
 
 from .base import BaseGuardrail, GuardrailResult, GuardrailSeverity
 
@@ -17,6 +19,30 @@ logger = logging.getLogger(__name__)
 # Retry configuration for LLM validation
 MAX_RETRIES = 3
 INITIAL_BACKOFF_SECONDS = 1.0
+
+
+class EntityValidationResult(BaseModel):
+    """Structured output schema for entity validation.
+
+    Using Pydantic model with with_structured_output() ensures Gemini
+    returns valid JSON matching this exact schema - no markdown, no parsing errors.
+    """
+
+    customer_code_valid: bool = Field(
+        description="True if customer code is correct or not mentioned in draft"
+    )
+    customer_code_reason: str = Field(
+        description="Brief explanation of customer code validation result"
+    )
+    party_name_valid: bool = Field(
+        description="True if party name matches or is a reasonable variation"
+    )
+    party_name_reason: str = Field(description="Brief explanation of party name validation result")
+    issues_found: List[str] = Field(
+        default_factory=list, description="List of specific issues found, empty if none"
+    )
+    passed: bool = Field(description="True if overall validation passed (no mismatches found)")
+
 
 # Validation prompt for LLM-based entity verification
 ENTITY_VALIDATION_PROMPT = """Validate the following draft email for entity accuracy.
@@ -85,7 +111,7 @@ class EntityVerificationGuardrail(BaseGuardrail):
                 results.extend(llm_result)
                 last_error = None
                 break
-            except (JSONExtractionError, ValueError) as e:
+            except Exception as e:
                 last_error = e
                 if attempt < MAX_RETRIES - 1:
                     backoff = INITIAL_BACKOFF_SECONDS * (2**attempt)
@@ -121,7 +147,11 @@ class EntityVerificationGuardrail(BaseGuardrail):
         self, output: str, context: CaseContext
     ) -> list[GuardrailResult]:
         """
-        Use LLM to validate entity accuracy.
+        Use LLM to validate entity accuracy with structured output.
+
+        Uses response_schema parameter to ensure the LLM returns valid JSON
+        matching EntityValidationResult schema. This is more reliable than
+        json_mode alone, which can still return markdown-wrapped JSON.
 
         Returns list of GuardrailResults for customer code and party name.
         """
@@ -138,11 +168,12 @@ class EntityVerificationGuardrail(BaseGuardrail):
             try:
                 response = loop.run_until_complete(
                     llm_client.complete(
-                        system_prompt="You are a validation assistant. Respond only with valid JSON.",
+                        system_prompt="You are a validation assistant.",
                         user_prompt=prompt,
                         temperature=0,  # Deterministic for validation
-                        json_mode=True,
                         max_tokens=500,
+                        # Use structured output for guaranteed valid JSON
+                        response_schema=EntityValidationResult,
                     )
                 )
             finally:
@@ -151,13 +182,8 @@ class EntityVerificationGuardrail(BaseGuardrail):
             logger.error("LLM call failed in entity verification: %s", e)
             raise
 
-        # Parse LLM response using robust extractor (handles markdown, etc.)
-        try:
-            result = extract_json(response.content)
-        except JSONExtractionError as e:
-            logger.error("Failed to extract JSON from LLM response: %s", e)
-            logger.debug("Raw response: %s", response.content[:500])
-            raise
+        # Parse the response - should be clean JSON from structured output
+        result = json.loads(response.content)
 
         results = []
 

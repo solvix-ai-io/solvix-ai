@@ -1,10 +1,11 @@
 """Gemini LLM provider using LangChain."""
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Type
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
+from pydantic import BaseModel
 
 from src.config.settings import settings
 
@@ -56,15 +57,21 @@ class GeminiProvider(BaseLLMProvider):
         temperature: float = None,
         max_tokens: int = None,
         json_mode: bool = False,
+        response_schema: Optional[Type[BaseModel]] = None,
     ) -> LLMResponse:
         """
         Generate completion using Gemini via LangChain.
 
         LangChain handles:
         - Gemini's response_mime_type for JSON mode
-        - Thinking configuration
+        - Structured output via with_structured_output()
         - Token counting
         - Error handling
+
+        Args:
+            response_schema: Optional Pydantic model for structured output.
+                When provided, uses LangChain's with_structured_output() which
+                is more reliable than json_mode alone.
         """
         try:
             # Build messages
@@ -78,16 +85,40 @@ class GeminiProvider(BaseLLMProvider):
                 "max_output_tokens": max_tokens if max_tokens is not None else self._max_tokens,
             }
 
-            # For JSON mode, configure response_mime_type
-            if json_mode:
+            # For JSON mode without schema, configure response_mime_type
+            if json_mode and not response_schema:
                 client_kwargs["response_mime_type"] = "application/json"
 
             # Create client for this specific request
             client = ChatGoogleGenerativeAI(**client_kwargs)
 
-            logger.debug(f"Calling Gemini: model={self._model}, json_mode={json_mode}")
+            logger.debug(
+                "Calling Gemini: model=%s, json_mode=%s, has_schema=%s",
+                self._model,
+                json_mode,
+                response_schema is not None,
+            )
 
-            # LangChain's invoke handles async automatically
+            # Use structured output if schema provided (more reliable than json_mode)
+            if response_schema:
+                structured_client = client.with_structured_output(
+                    response_schema,
+                    method="json_schema",  # More reliable than function_calling
+                )
+                result = await structured_client.ainvoke(messages)
+                # Convert Pydantic model back to JSON string for consistent interface
+                content = result.model_dump_json()
+                # For structured output, we don't get usage metadata directly
+                usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+                return LLMResponse(
+                    content=content,
+                    model=self._model,
+                    provider="gemini",
+                    usage=usage,
+                    raw_response={"structured": True},
+                )
+
+            # Standard invoke for non-structured output
             response = await client.ainvoke(messages)
 
             # Extract usage metadata (LangChain standardizes this)
