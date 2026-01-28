@@ -41,16 +41,21 @@ class Settings(BaseSettings):
     llm_provider: str = "gemini"  # "openai" or "gemini"
 
     # Gemini Configuration (PRIMARY)
+    # Using gemini-2.5-pro for reliability and best performance
+    # Options: gemini-2.5-flash (fast), gemini-2.5-pro (most capable/reliable)
     gemini_api_key: Optional[str] = None
-    gemini_model: str = "gemini-3-flash-preview"
+    gemini_model: str = "gemini-2.5-pro"
     gemini_temperature: float = 0.3
-    gemini_max_tokens: int = 2048
+    gemini_max_tokens: int = 4096  # Increased for longer drafts/structured output
 
     # OpenAI Configuration (FALLBACK)
+    # Note: gpt-5-nano is a reasoning model. Reasoning tokens consume from max_tokens budget.
+    # With max_tokens=2000 and 2000 reasoning tokens, there's 0 left for output.
+    # 16384 provides ~4-8x headroom for reasoning models.
     openai_api_key: Optional[str] = None
     openai_model: str = "gpt-5-nano"
     openai_temperature: float = 0.3
-    openai_max_tokens: int = 2000
+    openai_max_tokens: int = 16384  # High for reasoning models (reasoning tokens eat this budget)
 
     # Timeouts
     llm_timeout_seconds: int = 30

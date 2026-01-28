@@ -197,3 +197,22 @@ class EvaluateGatesRequest(BaseModel):
         default=None,
         pattern=r"^(friendly_reminder|professional|firm|final_notice|concerned_inquiry)$",
     )
+
+
+class EvaluateGatesBatchRequest(BaseModel):
+    """Batch request to evaluate gates for multiple parties at once.
+
+    Used to efficiently evaluate gates for many parties before parallel
+    draft generation. Since gate evaluation is deterministic (no LLM),
+    this reduces HTTP overhead significantly.
+    """
+
+    contexts: List[CaseContext] = Field(..., max_length=100)  # Max 100 parties per batch
+    proposed_action: str = Field(
+        ...,
+        pattern=r"^(send_email|create_case|escalate|close_case)$",
+    )
+    proposed_tone: Optional[str] = Field(
+        default=None,
+        pattern=r"^(friendly_reminder|professional|firm|final_notice|concerned_inquiry)$",
+    )

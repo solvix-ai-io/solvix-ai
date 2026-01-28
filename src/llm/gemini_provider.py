@@ -106,6 +106,26 @@ class GeminiProvider(BaseLLMProvider):
                     method="json_schema",  # More reliable than function_calling
                 )
                 result = await structured_client.ainvoke(messages)
+
+                # Validate non-empty response (Gemini sometimes returns None or empty)
+                if result is None:
+                    raise ValueError(
+                        f"Gemini returned None for structured output with schema {response_schema.__name__}"
+                    )
+
+                # Check if all fields are empty/None (indicates failed generation)
+                result_dict = result.model_dump()
+                non_empty_fields = [
+                    k
+                    for k, v in result_dict.items()
+                    if v is not None and v != "" and v != [] and v != {}
+                ]
+                if not non_empty_fields:
+                    raise ValueError(
+                        f"Gemini returned empty structured output (all fields None/empty) "
+                        f"for schema {response_schema.__name__}. Raw: {result_dict}"
+                    )
+
                 # Convert Pydantic model back to JSON string for consistent interface
                 content = result.model_dump_json()
                 # For structured output, we don't get usage metadata directly

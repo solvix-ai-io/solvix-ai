@@ -13,6 +13,12 @@ from .base import BaseLLMProvider, LLMResponse
 
 logger = logging.getLogger(__name__)
 
+# Import LengthFinishReasonError for handling reasoning model token exhaustion
+try:
+    from openai import LengthFinishReasonError
+except ImportError:
+    LengthFinishReasonError = None  # Older SDK versions may not have this
+
 
 class OpenAIProvider(BaseLLMProvider):
     """OpenAI LLM provider using LangChain."""
@@ -144,6 +150,36 @@ class OpenAIProvider(BaseLLMProvider):
             )
 
         except Exception as e:
+            # Check for LengthFinishReasonError (reasoning models exhaust token budget)
+            if LengthFinishReasonError and isinstance(e, LengthFinishReasonError):
+                effective_max = max_tokens if max_tokens is not None else self._max_tokens
+                logger.error(
+                    "OpenAI LengthFinishReasonError: model=%s exhausted max_tokens=%d "
+                    "(reasoning tokens consumed entire budget). Increase openai_max_tokens.",
+                    self._model,
+                    effective_max,
+                )
+                raise ValueError(
+                    f"OpenAI model '{self._model}' exhausted max_tokens={effective_max} on reasoning. "
+                    f"No output generated. Increase openai_max_tokens in settings (current: {effective_max})."
+                ) from e
+
+            # Fallback detection for LengthFinishReasonError via error message
+            # (handles cases where LangChain wraps the error)
+            error_str = str(e).lower()
+            if "length" in error_str and ("finish_reason" in error_str or "limit" in error_str):
+                effective_max = max_tokens if max_tokens is not None else self._max_tokens
+                logger.error(
+                    "OpenAI output truncated (likely reasoning model): max_tokens=%d, model=%s, error=%s",
+                    effective_max,
+                    self._model,
+                    e,
+                )
+                raise ValueError(
+                    f"OpenAI output truncated: max_tokens={effective_max} insufficient for model '{self._model}'. "
+                    f"Increase openai_max_tokens in settings."
+                ) from e
+
             logger.error(f"OpenAI provider error: {e}")
             raise
 

@@ -40,10 +40,11 @@ class FactualGroundingGuardrail(BaseGuardrail):
         """Validate that all invoice numbers in output exist in context."""
         # Extract invoice numbers from output using common patterns
         # Matches: INV-12345, INV12345, Invoice 12345, #12345, etc.
+        # NOTE: Patterns must be restrictive to avoid false positives with garbage chars
         invoice_patterns = [
             r"INV[-\s]?(\d+)",  # INV-12345, INV 12345, INV12345
             r"Invoice\s*#?\s*(\d+)",  # Invoice 12345, Invoice #12345
-            r"invoice\s+number\s*:?\s*(\S+)",  # invoice number: XYZ
+            r"invoice\s+number\s*:?\s*([A-Za-z0-9][-A-Za-z0-9]+)",  # invoice number: ABC-123 (alphanumeric only)
             r"#(\d{4,})",  # #12345 (4+ digits to avoid false positives)
         ]
 

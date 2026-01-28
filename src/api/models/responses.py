@@ -70,6 +70,26 @@ class EvaluateGatesResponse(BaseModel):
     tokens_used: Optional[int] = None
 
 
+class PartyGateResult(BaseModel):
+    """Gate result for a single party in batch evaluation."""
+
+    party_id: str
+    customer_code: str
+    allowed: bool
+    gate_results: Dict[str, GateResult]
+    recommended_action: Optional[str] = None
+    blocking_gate: Optional[str] = None
+
+
+class EvaluateGatesBatchResponse(BaseModel):
+    """Response from batch gate evaluation."""
+
+    total: int
+    allowed_count: int
+    blocked_count: int
+    results: list[PartyGateResult]
+
+
 class HealthResponse(BaseModel):
     """Health check response."""
 

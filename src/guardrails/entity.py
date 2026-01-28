@@ -24,7 +24,7 @@ INITIAL_BACKOFF_SECONDS = 1.0
 class EntityValidationResult(BaseModel):
     """Structured output schema for entity validation.
 
-    Using Pydantic model with with_structured_output() ensures Gemini
+    Using Pydantic model with with_structured_output() ensures the LLM
     returns valid JSON matching this exact schema - no markdown, no parsing errors.
     """
 
@@ -61,15 +61,10 @@ Your task:
 
 IMPORTANT: The draft does NOT need to explicitly mention the customer code. Only flag it as invalid if it mentions a DIFFERENT code than expected.
 
-Respond ONLY with valid JSON (no markdown):
-{{
-  "customer_code_valid": true,
-  "customer_code_reason": "Customer code not mentioned or matches expected",
-  "party_name_valid": true,
-  "party_name_reason": "Party name matches or is a reasonable variation",
-  "issues_found": [],
-  "passed": true
-}}
+For party name validation:
+- Accept reasonable variations (e.g., "Acme Corp" vs "ACME Corporation Ltd")
+- Accept generic greetings like "Dear Customer", "Dear Accounts Team", "Dear Sir/Madam"
+- Only flag as invalid if the draft clearly addresses a DIFFERENT company
 
 Set "passed" to false only if there are actual mismatches or hallucinated identifiers."""
 
@@ -78,13 +73,15 @@ class EntityVerificationGuardrail(BaseGuardrail):
     """
     LLM-based entity verification guardrail.
 
-    Uses the same LLM as draft generation to validate that:
+    Uses the LLM to validate that:
     1. Customer code is correct (if mentioned)
-    2. Party name is accurate
+    2. Party name is accurate (or acceptably generic)
     3. No hallucinated identifiers exist
 
-    This replaces regex-based detection which was prone to false positives
-    (e.g., matching common words like "with" as customer codes).
+    This uses LLM-as-judge pattern because:
+    - Regex can't understand semantic variations ("Acme Corp" vs "ACME Corporation")
+    - Only LLM can judge if "Dear Accounts Team" is acceptable for "Compton Packaging"
+    - Scales across different industries and naming conventions
     """
 
     def __init__(self):
@@ -98,8 +95,7 @@ class EntityVerificationGuardrail(BaseGuardrail):
         Validate entity identifiers using LLM-based verification with retry.
 
         Runs the LLM synchronously using asyncio.run() since guardrails
-        execute in a thread pool. Retries on failure instead of falling back
-        to regex-based validation.
+        execute in a thread pool. Retries on failure with exponential backoff.
         """
         results = []
 
@@ -125,7 +121,7 @@ class EntityVerificationGuardrail(BaseGuardrail):
                 else:
                     logger.error("Entity validation failed after %d attempts: %s", MAX_RETRIES, e)
 
-        # If all retries failed, fail the guardrail (don't silently pass with regex)
+        # If all retries failed, fail the guardrail (don't silently pass)
         if last_error is not None:
             results.append(
                 self._fail(
@@ -171,7 +167,7 @@ class EntityVerificationGuardrail(BaseGuardrail):
                         system_prompt="You are a validation assistant.",
                         user_prompt=prompt,
                         temperature=0,  # Deterministic for validation
-                        max_tokens=500,
+                        max_tokens=1024,  # Increased from 500 for reasoning models
                         # Use structured output for guaranteed valid JSON
                         response_schema=EntityValidationResult,
                     )
@@ -271,7 +267,8 @@ class EntityVerificationGuardrail(BaseGuardrail):
             )
 
         # Check for invalid emails
-        invalid_emails = found_emails - valid_emails
+        found_emails_lower = {e.lower() for e in found_emails}
+        invalid_emails = found_emails_lower - valid_emails
         if invalid_emails:
             return self._fail(
                 message=f"Unverified email addresses found: {invalid_emails}",
