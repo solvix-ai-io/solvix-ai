@@ -907,7 +907,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.15" },
     { name = "slowapi", specifier = ">=0.1.9" },
-    { name = "solvix-contracts", git = "https://github.com/Outstanding-AI/outstanding-backend.git?subdirectory=contracts&tag=contracts-v0.12.78" },
+    { name = "solvix-contracts", git = "https://github.com/Outstanding-AI/outstanding-backend.git?subdirectory=contracts&tag=contracts-v0.12.79" },
     { name = "tenacity", specifier = ">=8.2.0" },
     { name = "uvicorn", specifier = ">=0.27.0" },
 ]
@@ -1428,8 +1428,8 @@ wheels = [
 
 [[package]]
 name = "solvix-contracts"
-version = "0.12.78"
-source = { git = "https://github.com/Outstanding-AI/outstanding-backend.git?subdirectory=contracts&tag=contracts-v0.12.78#6b835d2d1fc38fed5457ba14f771225802f90482" }
+version = "0.12.79"
+source = { git = "https://github.com/Outstanding-AI/outstanding-backend.git?subdirectory=contracts&tag=contracts-v0.12.79#b3d593a7dd2e2b4518b3336b8d5edbe882d4e90b" }
 dependencies = [
     { name = "pydantic" },
 ]
